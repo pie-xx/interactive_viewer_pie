@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'interactive_image_viewer.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,7 +29,29 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   late Image img ;
+  var iviewer_u;
 
+  @override
+  void initState()  {
+    // TODO: implement initState
+    super.initState();
+
+    iviewer_u = InteractiveImageViewer();
+
+    iviewer_u.setOnDoubleTap((){
+      print(iviewer_u.getTapPos());
+      print(iviewer_u.getTapImgPos());
+    });
+
+  }
+  void load() async {
+    var res = await FilePicker.platform.pickFiles();
+    if( res != null ){
+      File file = File(res.files.single.path??"");
+      final imageForUint8 = await file.readAsBytes();
+      iviewer_u.loadimage(await Image.memory(imageForUint8));
+    }
+  }
   @override
   Widget build(BuildContext context) {
     File file = File(widget.title);
@@ -38,27 +61,13 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(file.path.substring(file.parent.path.length+1)),
       ),
-      body: InteractiveViewer(
-            boundaryMargin: const EdgeInsets.all(20.0),
-            minScale: 0.1,
-            maxScale: 64,
-            child: Center(child: img),
-          ),
+      body: iviewer_u,
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
-          if(result != null) {
-            File file = File(result.files.single.path??"");
-            Navigator.push(
-              this.context,
-              MaterialPageRoute(
-                builder: (context) => MyHomePage(title: file.path)
-              )
-         );
-        }
+          load();
         },
         tooltip: 'load',
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.read_more),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
