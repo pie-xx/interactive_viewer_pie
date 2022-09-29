@@ -1,9 +1,19 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
-import 'interactive_image_viewer.dart';
 
-void main() {
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'interactive_image_viewer.dart';
+import 'opencv_ffi.dart';
+
+late String outjpg;
+
+void main() async {
+
+  Directory _tdir = await getApplicationDocumentsDirectory();
+  outjpg = _tdir.path+"/ivp_output.jpg";
+
   runApp(const MyApp());
 }
 
@@ -30,24 +40,27 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late Image img ;
   var iviewer_u;
+  late OpenCVFFi _opencvffi;
 
   @override
   void initState()  {
     // TODO: implement initState
     super.initState();
 
+    _opencvffi = OpenCVFFi(outjpg);
     iviewer_u = InteractiveImageViewer();
 
     iviewer_u.setOnDoubleTap((){
       print(iviewer_u.getTapPos());
       print(iviewer_u.getTapImgPos());
     });
-
   }
+
   void load() async {
     var res = await FilePicker.platform.pickFiles();
     if( res != null ){
-      File file = File(res.files.single.path??"");
+      _opencvffi.filter(res.files.single.path??"");
+      File file = File(outjpg);
       final imageForUint8 = await file.readAsBytes();
       iviewer_u.loadimage(await Image.memory(imageForUint8));
     }
