@@ -9,11 +9,17 @@ class InteractiveImageViewer extends StatefulWidget {
   Image? img;
   late InteractiveImageState stat;
   Offset? pos;
+  Offset? lp_start_pos;
+  Offset? lp_end_pos;
   late Size imgsize;
 
   Function on_double_tap = (){};
   Function on_long_press = (){};
   Function on_tap = (){};
+
+  Function on_long_press_down = (){};
+  Function on_long_press_update = (){};
+  Function on_long_press_end = (){};
 
   @override
   // ignore: no_logic_in_create_state
@@ -25,6 +31,7 @@ class InteractiveImageViewer extends StatefulWidget {
 ////////////////////////////////////////////////////////
   void loadimage(Image dimg, {int? width, int? height}) async {
     img = dimg;
+    
     if( width==null || height==null){
       imgsize = Size(dimg.width??-1,dimg.height??-1);
       if( imgsize.width==-1 || imgsize.height==-1){
@@ -36,14 +43,32 @@ class InteractiveImageViewer extends StatefulWidget {
     print(imgsize);
     // ignore: invalid_use_of_protected_member
     stat?.setState(() {
-  
     });
   }
+/*
+  void loadimage_file(String filename, {int? width, int? height}) async {
 
-  Future<Size> getImageSize(Image image) async {
+    img = Image.file(File(filename));
+    
+    if( width==null || height==null){
+      imgsize = Size(img?.width??-1,img?.height??-1);
+      if( imgsize.width==-1 || imgsize.height==-1){
+        imgsize = await getImageSize(img);
+      }
+    }else{
+      imgsize = Size(width.toDouble(),height.toDouble());
+    }
+    print(imgsize);
+    // ignore: invalid_use_of_protected_member
+    stat?.setState(() {
+    });
+    
+  }
+*/
+  Future<Size> getImageSize(Image? image) async {
 
     final Completer<Size> completer = Completer<Size>();
-    image.image.resolve(ImageConfiguration.empty).addListener(
+    image?.image.resolve(ImageConfiguration.empty).addListener(
       ImageStreamListener(
             (ImageInfo image, bool synchronousCall) {
           final ui.Image myImage = image.image;
@@ -86,14 +111,18 @@ class InteractiveImageViewer extends StatefulWidget {
   }
 
   Offset getTapImgPos(){
+    return trTappos2Imgpos(getTapPos());
+  }
+
+  Offset trTappos2Imgpos(Offset _pos){
     Size? ws = getWidgetSize();
     if( ws != null ){
       Size ds = calcBaseSize( ws.width , ws.height, imgsize.width, imgsize.height );
 
       var wm = (ws.width - ds.width)/2;
       var hm = (ws.height - ds.height)/2;
-      var spx = (pos?.dx ?? -1) - wm;
-      var spy = (pos?.dy ?? -1) - hm;
+      var spx = (_pos.dx) - wm;
+      var spy = (_pos.dy) - hm;
       var rpx = (spx*imgsize.width/ds.width);
       var rpy = (spy*imgsize.height/ds.height);
       print("pos $pos imgsize $imgsize");
@@ -102,6 +131,7 @@ class InteractiveImageViewer extends StatefulWidget {
     }
     return Offset(-1,-1);
   }
+
 
 ////////////////////////////////////////////////////////
   void setTransformationValue(Matrix4 mat){
@@ -143,6 +173,25 @@ class InteractiveImageViewer extends StatefulWidget {
     on_tap();
   }
 
+  void setOnLongPressDown(Function func){
+    on_long_press_down = func;
+  }
+  void onLongPressDown(){
+    on_long_press_down();
+  }
+  void setOnLongPressUpdate(Function func){
+    on_long_press_update = func;
+  }
+  void onLongPressUpdate(){
+    on_long_press_update();
+  }
+  void setOnLongPressEnd(Function func){
+    on_long_press_end = func;
+  }
+  void onLongPressEnd(){
+    on_long_press_end();
+  }
+
 }
 
 
@@ -179,12 +228,25 @@ class InteractiveImageState extends  State<InteractiveImageViewer> {
       },
       onLongPressDown: (details) {
         widget.pos = _transformationController.toScene(details.localPosition);
-        print("onLongPressDown ${widget.pos}");        
+        widget.lp_start_pos = widget.pos;
+        print("onLongPressDown ${widget.lp_start_pos}");    
+        widget.onLongPressDown();    
       },
       onLongPress: () {
         print("onLongPress");
         widget.onLongPress();
       },
+      onLongPressMoveUpdate: (details) {
+        widget.pos = _transformationController.toScene(details.localPosition);
+        widget.onLongPressUpdate();
+      },
+      onLongPressEnd: (details) {
+        widget.pos = _transformationController.toScene(details.localPosition);
+        widget.lp_end_pos = widget.pos;
+        print("onLongPressEnd ${widget.lp_start_pos} - ${widget.lp_end_pos}");
+        widget.onLongPressEnd();
+      },
+
       onDoubleTapDown:(details) {
         widget.pos = _transformationController.toScene(details.localPosition);
         print("onDoubleTapDown ${widget.pos}");
@@ -193,6 +255,7 @@ class InteractiveImageState extends  State<InteractiveImageViewer> {
         print("onDoubleTap");
         widget.onDoubleTap();
       },
+
       child:
         InteractiveViewer(
           transformationController: _transformationController,
