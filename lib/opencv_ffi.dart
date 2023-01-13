@@ -204,7 +204,7 @@ class OpenCVFFi {
     s[4]=255;
     s[5]=0;
     s[6]=0;
-    s[7]=2;
+    s[7]=3;
     try {
       final func = dylib.lookupFunction<
         Void Function(Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint32>, Pointer<Uint32>),

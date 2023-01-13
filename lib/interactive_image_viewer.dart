@@ -114,6 +114,55 @@ class InteractiveImageViewer extends StatefulWidget {
     return trTappos2Imgpos(getTapPos());
   }
 
+  Rect getViewArea(){
+    try {
+    print("imgsize $imgsize");
+    Size? ws = getWidgetSize();
+    print("ws $ws");
+    Size ds = calcBaseSize( ws!.width , ws.height, imgsize.width, imgsize.height );
+    print("ds $ds");
+
+    double xmargin=(ws.width-ds.width)/2;
+    double ymargin =(ws.height-ds.height)/2;
+    print("xm $xmargin ym $ymargin");
+
+    Matrix4 m4 = getTransformationValue();
+
+    double mag=m4.row0[0];
+    double vmg = imgsize.width/ds.width;
+    if( xmargin > ymargin){
+      vmg = imgsize.height/ds.height;
+    }
+
+    double left = (- xmargin - m4.row0[3]/mag) * vmg;
+    double top = (- ymargin - m4.row1[3]/mag) * vmg;
+    double width = vmg*ws.width/mag;
+    double height = vmg*ws.height/mag;
+
+    if( left < 0){
+      width = width + left;
+      if( width > imgsize.width){
+        width = imgsize.width;
+      }
+      left = 0;
+    }
+    if( top < 0 ){
+      height = height + top;
+      if( height > imgsize.height){
+        height = imgsize.height;
+      }
+      top = 0;
+    }
+
+    print("left=$left top=$top width=$width height = $height");
+    print(m4);
+
+    return Rect.fromLTWH(left,top,width,height);
+    }catch(LateInitializationError){
+      return Rect.zero;
+    }
+  }
+
   Offset trTappos2Imgpos(Offset _pos){
     Size? ws = getWidgetSize();
     if( ws != null ){
@@ -125,8 +174,8 @@ class InteractiveImageViewer extends StatefulWidget {
       var spy = (_pos.dy) - hm;
       var rpx = (spx*imgsize.width/ds.width);
       var rpy = (spy*imgsize.height/ds.height);
-      print("pos $pos imgsize $imgsize");
-      print("ws $ws, ds $ds, wm $wm, hm $hm, spx $spx, spy $spy, rpx $rpx, rpy $rpy");
+      //print("pos $pos imgsize $imgsize");
+      //print("ws $ws, ds $ds, wm $wm, hm $hm, spx $spx, spy $spy, rpx $rpx, rpy $rpy");
       return Offset(rpx,rpy);
     }
     return Offset(-1,-1);
@@ -140,10 +189,66 @@ class InteractiveImageViewer extends StatefulWidget {
   Matrix4 getTransformationValue(){
     return stat.getTransformationValue();
   }
+  
+  static const int gr_top=0;
+  static const int gr_left=1;
+  static const int gr_bottom=2;
+  static const int gr_right=3;
+
+  void setViewArea( Rect vrect, int gr ){
+    Size? ws = getWidgetSize();
+    Size ds = calcBaseSize( ws!.width , ws.height, imgsize.width, imgsize.height );
+
+    double xmargin=(ws.width-ds.width)/2;
+    double ymargin =(ws.height-ds.height)/2;
+
+    Size ris = Size(imgsize.width*(ws.width/ds.width),imgsize.height*(ws.height/ds.height));
+
+    double mag = ris.width / vrect.width;
+    double vmg = imgsize.width / ds.width;
+    double vtop = vrect.top;
+    double vleft = vrect.left;
+
+    switch(gr){
+      case gr_top:
+        mag = ris.width /vrect.width;
+        vmg = imgsize.height/ds.height;
+        break;
+      case gr_left:
+        mag = ris.height /vrect.height;
+        vmg = imgsize.height/ds.height;
+        break;
+      case gr_bottom:
+        mag = ris.width /vrect.width;
+        vmg = imgsize.height/ds.height;
+        double height = vmg*ws.height/mag;
+        vtop = vrect.bottom - height;
+        break;
+      case gr_right:
+        mag = ris.height /vrect.height;
+        vmg = imgsize.height/ds.height;
+        double width = vmg*ws.width/mag;
+        vleft = vrect.right - width;
+        break;
+    }
+
+    double mxoff = -(vleft/vmg + xmargin )*mag;
+    double myoff = -(vtop/vmg + ymargin )*mag;
+
+    Matrix4 m4 =Matrix4(mag, 0, 0, 0, 
+      0, mag, 0, 0, 
+      0, 0, mag, 0, 
+      mxoff, myoff, 0, 1);
+    print("vrect=$vrect");
+    print(m4);
+
+    stat.setTransformationValue(m4);
+    stat.setState(() {});
+  }
 
 ////////////////////////////////////////////////////////
   void setPanEnabled(bool en){
-    stat?.setState(() {
+    stat.setState(() {
       stat.panEnabled = en;  
     });
   }
@@ -220,20 +325,20 @@ class InteractiveImageState extends  State<InteractiveImageViewer> {
     var iviewer = GestureDetector(
       onTapDown: (details) {
         widget.pos = _transformationController.toScene(details.localPosition);        
-        print("onTapDown ${widget.pos}");        
+        //print("onTapDown ${widget.pos}");        
       },
       onTap: () {
-        print("onTap");
+        //print("onTap");
         widget.onTap();        
       },
       onLongPressDown: (details) {
         widget.pos = _transformationController.toScene(details.localPosition);
         widget.lp_start_pos = widget.pos;
-        print("onLongPressDown ${widget.lp_start_pos}");    
+        //print("onLongPressDown ${widget.lp_start_pos}");    
         widget.onLongPressDown();    
       },
       onLongPress: () {
-        print("onLongPress");
+        //print("onLongPress");
         widget.onLongPress();
       },
       onLongPressMoveUpdate: (details) {
@@ -243,16 +348,16 @@ class InteractiveImageState extends  State<InteractiveImageViewer> {
       onLongPressEnd: (details) {
         widget.pos = _transformationController.toScene(details.localPosition);
         widget.lp_end_pos = widget.pos;
-        print("onLongPressEnd ${widget.lp_start_pos} - ${widget.lp_end_pos}");
+        //print("onLongPressEnd ${widget.lp_start_pos} - ${widget.lp_end_pos}");
         widget.onLongPressEnd();
       },
 
       onDoubleTapDown:(details) {
         widget.pos = _transformationController.toScene(details.localPosition);
-        print("onDoubleTapDown ${widget.pos}");
+        //print("onDoubleTapDown ${widget.pos}");
       },
       onDoubleTap: () {
-        print("onDoubleTap");
+        //print("onDoubleTap");
         widget.onDoubleTap();
       },
 

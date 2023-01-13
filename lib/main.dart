@@ -68,6 +68,8 @@ class _MyHomePageState extends State<MyHomePage> {
   List<DropdownMenuItem<int>> _items = [];
   int _selectItem = 0;
 
+  Rect vrect = Rect.zero;
+
   @override
   void initState()  {
     // TODO: implement initState
@@ -250,6 +252,39 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(file.path.substring(file.parent.path.length+1)),
         actions: [
           IconButton(
+            icon: Icon(Icons.reset_tv, color: Colors.white,),
+            tooltip: 'reset',
+            onPressed: () {
+              ivmain.setTransformationValue( Matrix4.identity() );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.zoom_out_map, color: Colors.white,),
+            tooltip: 'setview',
+            onPressed: () {
+              ivmain.setViewArea( vrect, InteractiveImageViewer.gr_bottom );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.view_array, color: Colors.white,),
+            tooltip: 'viewarea',
+            onPressed: () async {
+              try {
+              vrect = ivmain.getViewArea();
+              //print("rect=$rect");
+
+              _opencvffi.rectangle(injpg, outjpg, 
+                vrect.left.toInt(), vrect.top.toInt(), vrect.width.toInt(), vrect.height.toInt());
+              File fileM = File(outjpg);
+              final imageForUint8 = await fileM.readAsBytes();
+              Image _imgM = await Image.memory(imageForUint8);
+              ivmain.loadimage(_imgM);
+              }catch(LateInitializationError){
+                print("LateInitializationError");
+              }
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.crop, color: Colors.white,),
             tooltip: 'trim',
             onPressed: () {
@@ -264,7 +299,7 @@ class _MyHomePageState extends State<MyHomePage> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.read_more, color: Colors.white,),
+            icon: Icon(Icons.image, color: Colors.white,),
             tooltip: 'read',
             onPressed: () {
               setState(() {
@@ -273,6 +308,7 @@ class _MyHomePageState extends State<MyHomePage> {
               });
             },
           ),
+          Text(' '),
           DropdownButton(
                     items: _items,
                     value: _selectItem,
